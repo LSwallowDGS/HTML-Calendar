@@ -1,28 +1,57 @@
-#creates and writes events to a CSV file for an HTML calendar
-import csv
+import pandas as pd
+import calendar
+from datetime import datetime
+from jinja2 import Environment, FileSystemLoader
 
-def create_event_csv(events, csv_filename):
-    # Write header to the CSV file
-    header = ["Event Title", "Date", "Time", "Location"]
-    with open(csv_filename, 'w', newline='') as csvfile:
-        csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(header)
+# Read events from CSV file
+def read_events_from_csv(file_path):
+    events_df = pd.read_csv(file_path)
+    return events_df
 
-        # Write events to the CSV file
-        for event in events:
-            csv_writer.writerow([event["title"], event["date"], event["time"], event["location"]])
+# Generate HTML calendar from events
+def generate_html_calendar(events_df):
+    # Create a dictionary to store events for each day
+    events_by_day = {}
 
+    for _, event in events_df.iterrows():
+        date_str = event['Date']
+        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+        day_key = date_obj.strftime('%Y-%m-%d')
 
-# Example events
-events_list = [
-        {"title": "Meeting 1", "date": "2023-11-10", "time": "10:00 AM", "location": "Conference Room 1"},
-        {"title": "Conference Call", "date": "2023-11-12", "time": "02:30 PM", "location": "Online"},
-        # Add more events as needed
-    ]
-# Specify the CSV file name
-csv_filename = "events.csv"
+        if day_key not in events_by_day:
+            events_by_day[day_key] = []
 
-# Create and write events to the CSV file
-create_event_csv(events_list, csv_filename)
+        events_by_day[day_key].append({
+            'title': event['Event Title'],
+            'time': event['Time'],
+            'location': event['Location']
+        })
 
-print(f"Events have been written to {csv_filename}.")
+    # Load Jinja2 template
+    env = Environment(loader=FileSystemLoader('.'))
+    template = env.get_template('calendar_template.html')
+
+    # Generate HTML using the template
+    html_output = template.render(events_by_day=events_by_day)
+
+    return html_output
+
+# Save HTML to a file
+def save_html_to_file(html_content, output_file):
+    with open(output_file, 'w') as file:
+        file.write(html_content)
+
+# Replace 'your_events.csv' with the path to your CSV file
+events_file_path = 'events.csv'
+
+# Read events from CSV
+events_df = read_events_from_csv(events_file_path)
+
+# Generate HTML calendar
+html_calendar = generate_html_calendar(events_df)
+
+# Replace 'output_calendar.html' with the desired output file name
+output_file_path = 'output_calendar.html'
+
+# Save HTML to a file
+save_html_to_file(html_calendar, output_file_path)
